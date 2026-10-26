@@ -17,7 +17,7 @@ python-dotenv>=1.0,<1.2
 google-genai>=1.0,<2.0
 
 # Model Context Protocol — unit 4. The only new install in this pair.
-mcp>=1.0,<2.0
+# mcp>=1.0,<2.0
 
 # The web server behind serve.py — unit 9, when you deploy one of your systems.
 flask>=3.0,<4.0

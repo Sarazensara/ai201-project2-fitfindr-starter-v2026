@@ -25,9 +25,12 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+The search step is a plain keyword match against the listings data, so some
+reasonable queries will still miss even when a valid item is in the catalog.
+That makes 5 of 5 too strict: the loop is simple, but the dataset and matching
+logic are not guaranteed to catch every phrasing. A 4 of 5 target still
+requires the agent to succeed on the normal path most of the time without
+punishing normal search variation.
 
 ---
 
@@ -37,66 +40,39 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
+This path is the main branch in the loop and it should be deterministic: if the
+search returns an empty list, the agent must exit early instead of continuing to
+` suggest_outfit ` with no item. Because the branch is driven by a concrete
+condition in the loop, not by model creativity, 5 of 5 is reasonable here. The
+real requirement is that the user gets a helpful message about how to change the
+query rather than a broken or misleading follow-up.
 
 ---
 
-## 3. Something about state
+## 3. The selected item is the one passed to the next tool
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
-
-
+Given a successful search, the item stored in `session["selected_item"]` is the same listing that reaches `suggest_outfit` — in 5 of 5 tries.
 
 **Why this target:**
-
-
+The loop is only correct if its state is consistent: the item the user searched for is the same item the next tool receives. A tool failure can look like a model problem, but this check isolates state drift by comparing the selected listing ID against what the trace records as the `new_item` passed into `suggest_outfit`. A stricter rule like "the exact text matches perfectly" would be too brittle because the same item can be represented by the same fields without a word-for-word string match.
 
 ---
 
-## 4. Something about the fit card
+## 4. The fit card keeps the key facts and stays distinct
 
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
-
+For 5 different successful item queries, each fit card is 2 to 4 sentences long, mentions the item and its price, and does not reuse the same opening sentence across different items — 4 of 5 tries.
 
 **Why this target:**
-
-
+The model is allowed to vary its wording, so exact wording is not a useful target. What I need is evidence that the card is usable and not generic: it includes the actual item and price, stays short enough to read like a real caption, and doesn't collapse into the same stock intro for multiple finds. That makes the criterion measurable without punishing normal model creativity.
 
 ---
 
-## 5. Your choice
+## 5. An empty wardrobe still gets a helpful suggestion
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
-
-
+Given an empty wardrobe, the agent still returns a general outfit suggestion and does not crash or call `create_fit_card` — 5 of 5 tries.
 
 **Why this target:**
-
-
+This is a common real-world path and a branch point in the loop: users often have no saved clothes yet. The failure mode is not subtle — it either crashes, returns an empty string, or tries to build a fit card with no wardrobe context. A target of 5 of 5 makes sense here because the logic is straightforward and the empty case is the exact scenario the agent should handle cleanly.
 
 ---
 
